@@ -1,36 +1,36 @@
-#Workable - MovieRama
+# Workable - MovieRama
 
 This is a small web application that acts as a movie recommender allowing users to get movie recommendations.
 
-##Requirements
+## Requirements
 The application is built with Python 2.7. Specifically, in order to deploy it on your system, you will need the following:
 
 1. Python 2.7.14 with
-..* Numpy 1.13.3
-..* Pandas 0.20.3
-..* NLTK 3.2.4
-..* Flask 0.12.2
-..* sqlalchemy 1.2.10
-..* scipy 0.19.1
+.* Numpy 1.13.3
+* Pandas 0.20.3
+* NLTK 3.2.4
+* Flask 0.12.2
+* sqlalchemy 1.2.10
+* scipy 0.19.1
 2. MySQL Server 8.0
 
-##Populating the MySQL tables
+## Populating the MySQL tables
 The first step entails the preprocessing of the MovieLens 20M datasets. You have to download the dataset from [here] (http://files.grouplens.org/datasets/movielens/ml-20m.zip) . The dataset is used in order to retrieve user related information.
 
-###Creating the tables
+### Creating the tables
 The sql script for creating the MySQL tables is available in the utils/ directory (ddl.sql). There are three tables, namely:
 1. users_genres_index which maintains information regarding the movie genres that a particular user prefers
 2. users_movies_tags_index which maintains information regarding the tags that a particular user has attributed to movies
 3. users_ratings_index which maintains information regarding the ratings that a user has given to movies
 
-###Loading data
+### Loading data
 The preprocessing script is located in utils/ and is load_data.py. Upon invocation, it parses the MovieLens 20M collection and creates the corresponding CSVs. You should invoke it by providing the path to the MovieLens 20M dataset. 
 ```
 python load_data.py <path to ml-20m>
 ```
 Thereinafter, data can be loaded in MySQL using the commands in load.sql. Note here that the process can be particularly long; on an Intel Core i7-7500U @ 2.7GHz it takes approximately 6 hours in order to insert all data in the tables.
 
-##Running the application
+## Running the application
 The application can be run by executing the file web_interface/interface.py. Prior to that, you should fix the properties file. In particular the following properties should be set:
 
 -USERNAME:The database user name
@@ -51,7 +51,7 @@ Always use ":" in order to separate a property-key from a property-value. Then, 
 python web_interface/interface.py ./properties.txt
 ```
 
-###Building the model
+### Building the model
 Setting a value of 1 in the BUILD property triggers the execution of the knowledge base building process. In particular, for every user we extract the genres and attributed tags per viewed movie and create a vector in accordance with the TF-IDF concept. Specifically for the case of genres:
 -A = number of times a user watched a movie of genre x
 -B = number of times a user watched any movie
@@ -62,13 +62,13 @@ Thereinafter, we populate the User x Genre matrix as follows: **X[i,j]=(A/B)*log
 
 Matrixes X,Y are then projected to a lower dimensional space via Random Projections (the number of dimensions is infered by the algorithm using the Johnson–Lindenstrauss lemma -default behavior of SparseRandomProjection class offered by scipy) and subsequently indexed for k-NN search. The results are serialized and stored with pickle. When the BUILD property is set to 0, the knowledge base is populated with pickle and stored in memory. Make sure that in both cases the STORAGE property is set to the same value. The name of the storage file is assigned by the application itself and should not be changed. Calculations may take up to 6 hours depending on the processing power of the host machine. Therefore, a pre-built version of the knowledge base is provided in recommendation_data.zip. You should unzip it in the STORAGE directory.
 
-###API Methods
+### API Methods
 After the knowledge base's initialization, the application expects requests on port WEB_PORT. There are three methods that can be invoked:
 1. get_movies_for_user
 ..*userId: The user id (integer) which is has to be present in the database
 
 ..The application returns a list of movies (objects of class Movie from data_models/movie.py) containing the movie's title, description and release year as downloaded from https://www.themoviedb.org/. 
-..####Example
+..#### Example
 ..```
 ..curl -i -X GET -H "Content-Type:application/json" http://localhost:8081/get_movies_for_user -d "{\"userId\":\"131784\"}"
 ..```
@@ -106,7 +106,7 @@ After the knowledge base's initialization, the application expects requests on p
 ..*tags: A list of tags 
 
 ..The application returns 0 upon proper execution (i.e. no error while inserting the data) or an error code from utilities/return_codes.py
-..####Example
+..#### Example
 ..```
 ..curl -i -X GET -H "Content-Type:application/json" http://localhost:8081/set_movies_for_user -d "{\"userId\":\"-1\",\"movieId\":\"453\",\"tags\":[\"funnny\",\"hilarious\"], \"rating\":\"5\"}"
 ..```
@@ -122,7 +122,7 @@ After the knowledge base's initialization, the application expects requests on p
 ..*genres: A list of genres. It is not considered when the userId is provided since the corresponding information is retrieved from the database.
 
 ..The application returns a list of movies (objects of class Movie from data_models/movie.py) containing the movie's title, description and release year as downloaded from https://www.themoviedb.org/. 
-..####Example
+..#### Example
 ..```
 ..curl -i -X GET -H "Content-Type:application/json" http://localhost:8081/get_movie_recommendations_for_user -d "{\"userId\":\"131784\"}"
 ..```
@@ -154,16 +154,16 @@ After the knowledge base's initialization, the application expects requests on p
 .."{\"description\": \"Top London cop, PC Nicholas Angel is good. Too good.  To stop the rest of his team from looking bad, he is reassigned to the quiet town of Sandford, paired with simple country cop, and everything seems quiet until two actors are found decapitated. It is addressed as an accident, but Angel isn't going to accept that, especially when more and more people turn up dead.\", \"year\": \"2007\", \"id\": 4638, \"title\": \"Hot Fuzz\"}"]
 ..```
 
-##Implementation Details
+## Implementation Details
 The following sections provide a number of details regarding the internal implementation of specific components. In particular the internals of the recommendation algorithm and the cache memory are presented. 
 
-###Recommendation Engine
+### Recommendation Engine
 The recommendations engine essentially issues two k-NN queries in the genres and tags indexes. The results comprise other users which are similar to the query with respect to genres of watched movies (R1) and attributed tags (R2). The final set of similar users is calculated as the interesection of R1 and R2, or R1 if the former does not exist. The final list of movies ids is retrieved by issuing a query in the database and retaining the top-K rated movies. Their details are then downloaded from TMDB.
 
-###Cache
+### Cache
 Assuming that you have run the examples above you should have noticed that querying the database and then TMDB takes some time. In order to speed up the process, the application employs a simple cache mechanism that maintains the last 100 results in memory (FIFO priority). The caching mechanism is applied to movie and recommendations retrieval as well as the maintenance of the knowledge base in main memory.
 
-###Benchmarking
+### Benchmarking
 In order to assess the quality of the recommendations, a set of 1000 users was used as benchmark dataset. The goal was to compare the generated recommendations against the movies viewed. The evaluation process is the following:
 
 1. Randomly select 1000 users from the database
