@@ -1,10 +1,10 @@
 
-#ARIMA based anomaly detection mechanism
+# ARIMA based anomaly detection mechanism
 This project employes ARIMA in order to perform anomaly detection on timeseries data. From a strict mathematical perspective, ARIMA is used to generate a prediction for a some future time t which is then compared with the observed value. If the value lays outside a predetermined tolerance interval then it is denoted as outlier.    
 
-##Getting started
+## Getting started
 
-###Prerequisites
+### Prerequisites
 
 The program is written in python. It should work with both Python 2.7.5 and 3.6.3 however it has been thorougly tested with 2.7.5. Additionally, it needs the following libraries:
 
@@ -81,19 +81,19 @@ After setting the properties residing in anomaly/properties.txt, execute run.sh.
 
 The program is currently deployed on 198.19.45.11 in directory /cloudera/opsan_stream1/runtime/anomalies_arima. Its properties appear in anomaly/properties.txt. Executing run.sh from the command line will start the program in the background.
 
-##Algorithm
+## Algorithm
 The algorithm is simple in nature. It constantly searches for new data, performs predictions using ARIMA, stores the results and sleeps for the time remaining until the completion of the indicated time slot duration. Some details are provided in the following sections.
 
-###Cache memory
+### Cache memory
 Due to the fact that it is highly inefficient to query Impala for the whole history we employ a simple cache memory. For every (server, metric, device) tuple we retain a vector which contains week-long measurements aggregated according to the given time duration (e.g. 1008 10-minute averages or 2016 5-minute averages). This vector is initialized at the beginning of the program; in every loop we calculate only the three latest observations and update it. Assuming we use 10-minutes aggregations then in the first loop we will calculate 1008 values while in the second loop 3; the third value will normally correspond to the new time slot t while the other two values to time slots t-1 and t-2. Moreover,  t0 will be shifted to t1 in order to guarantee that we will always have 1008 values stored.
 
-###Generated results
+### Generated results
 The following fields are generated: 
 * window_id: The window id calculated since 1/1/1970. Assuming 10-minute length windows/time slots then this number correspodns to the number of 10-minute slots since 1/1/1970.
-* predicted_value: The predicted value for this windows id (i.e. [t..t+x) where x is the window duration in minutes)
-* actual_value: The observed value for the previous window (i.e. [t-x..t) where x is the window duration in minutes)
-* upper: The highest tolerable bound; observed value of [t..t+x) must be lower than or equal to this
-* lower: The lowest tolerable bound; observed value of [t..t+x) must be higher than or equal to this
+* predicted_value: The predicted value for this windows id (i.e. \[t ... t+x) where x is the window duration in minutes)
+* actual_value: The observed value for the previous window (i.e. \[t-x ... t) where x is the window duration in minutes)
+* upper: The highest tolerable bound; observed value of \[t ... t+x) must be lower than or equal to this
+* lower: The lowest tolerable bound; observed value of \[t ... t+x) must be higher than or equal to this
 * server: The server
 * metric: The metric
 * device: The device 
